@@ -2,6 +2,7 @@ import { getBaseUrl, getHeaders } from "./auth";
 import type { Order } from "../../types/trade";
 import type { UpstoxOrderParams, UpstoxResponse, UpstoxOrderData } from "../../types/upstox";
 import { getInstrument } from "../../config/instruments";
+import { env } from "../../config/env";
 
 /**
  * Places an order via the Upstox API
@@ -48,6 +49,10 @@ export async function placeOrder(params: UpstoxOrderParams): Promise<Order> {
     console.log(`[Orders] Placed order successfully. Order ID: ${newOrder.order_id}`);
     return newOrder;
   } catch (err: any) {
+    if (env.TRADING_MODE === "live") {
+      console.error("[Orders] CRITICAL: Live order placement failed:", err.message);
+      throw new Error(`[Orders] LIVE ORDER FAILED: ${err.message}. No fallback in live mode.`);
+    }
     console.warn(`[Orders] placeOrder failed (${err.message}). Falling back to paper-trading mock execution.`);
     const inst = getInstrument(params.instrument_token);
     const mockOrderId = "MOCK-" + Math.floor(Math.random() * 1000000000);

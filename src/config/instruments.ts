@@ -6,6 +6,10 @@ export interface Instrument {
   tick_size: number;
   lot_size: number;
   segment: string;
+  strike_price?: number;
+  expiry?: string;
+  option_type?: "CE" | "PE";
+  underlying?: string;
 }
 
 export const WATCHLIST: Instrument[] = [
@@ -83,12 +87,73 @@ export const WATCHLIST: Instrument[] = [
   }
 ];
 
-// Helper to look up an instrument by key
-export function getInstrument(key: string): Instrument | undefined {
-  return WATCHLIST.find((inst) => inst.instrument_key === key);
+/**
+ * Helper to get or generate an options instrument
+ * @param symbol - The underlying symbol (e.g., "NIFTY")
+ * @param strike - The strike price (e.g., 23000)
+ * @param expiry - The expiry date string (e.g., "2026-06-18")
+ * @param type - The option type ("CE" or "PE")
+ * @returns The Instrument object
+ */
+export function getOptionsInstrument(
+  symbol: string,
+  strike: number,
+  expiry: string,
+  type: "CE" | "PE"
+): Instrument {
+  const date = new Date(expiry);
+  if (isNaN(date.getTime())) {
+    throw new Error("[getOptionsInstrument] Invalid expiry date: " + expiry);
+  }
+  const yy = date.getFullYear().toString().slice(-2);
+  const monthVal = date.getMonth() + 1;
+  let m = "";
+  if (monthVal === 10) m = "O";
+  else if (monthVal === 11) m = "N";
+  else if (monthVal === 12) m = "D";
+  else m = monthVal.toString();
+  const dd = date.getDate().toString().padStart(2, "0");
+  const key = `NFO_OPT|${symbol}${yy}${m}${dd}${strike}${type}`;
+  return {
+    instrument_key: key,
+    name: `${symbol} ${expiry} ${strike} ${type}`,
+    trading_symbol: `${symbol}${yy}${m}${dd}${strike}${type}`,
+    exchange: "NFO",
+    tick_size: 0.05,
+    lot_size: symbol.toUpperCase() === "NIFTY" ? 75 : 30,
+    segment: "NFO_OPT",
+    strike_price: strike,
+    expiry: expiry,
+    option_type: type,
+    underlying: symbol
+  };
 }
 
-// Helper to look up an instrument by symbol
+export const OPTIONS_WATCHLIST: Instrument[] = [
+  getOptionsInstrument("NIFTY", 23000, "2026-06-18", "CE"),
+  getOptionsInstrument("NIFTY", 23000, "2026-06-18", "PE"),
+  getOptionsInstrument("BANKNIFTY", 50000, "2026-06-17", "CE"),
+  getOptionsInstrument("BANKNIFTY", 50000, "2026-06-17", "PE")
+];
+
+/**
+ * Helper to look up an instrument by key
+ * @param key - The instrument key
+ * @returns The Instrument object if found
+ */
+export function getInstrument(key: string): Instrument | undefined {
+  const found = WATCHLIST.find((inst) => inst.instrument_key === key);
+  if (found) return found;
+  return OPTIONS_WATCHLIST.find((inst) => inst.instrument_key === key);
+}
+
+/**
+ * Helper to look up an instrument by symbol
+ * @param symbol - The trading symbol
+ * @returns The Instrument object if found
+ */
 export function getInstrumentBySymbol(symbol: string): Instrument | undefined {
-  return WATCHLIST.find((inst) => inst.trading_symbol === symbol);
+  const found = WATCHLIST.find((inst) => inst.trading_symbol === symbol);
+  if (found) return found;
+  return OPTIONS_WATCHLIST.find((inst) => inst.trading_symbol === symbol);
 }

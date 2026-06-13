@@ -6,7 +6,8 @@ import { exchangeCodeForToken, getAuthUrl, hasValidToken, clearToken } from "../
 import { fetchMarketQuotes, fetchNews } from "../tools/upstox/market-data";
 import { fetchPositions, fetchAccountSummary, exitAllPositions } from "../tools/upstox/portfolio";
 import { fetchOrderBook } from "../tools/upstox/orders";
-import { createFundManager } from "../agents/agent-system";
+import { createFundManager, agentRegistry } from "../agents/agent-system";
+import { enforceRiskRules } from "../tools/risk/enforcer";
 import type { AgentRole, AgentChatMessage } from "../types/agent";
 
 // Keep active agents and chat histories in memory
@@ -124,6 +125,17 @@ const app = new Elysia()
   })
 
   .post("/api/portfolio/exit-all", async () => {
+    try {
+      if (WATCHLIST.length > 0) {
+        await enforceRiskRules({
+          instrumentKey: WATCHLIST[0].instrument_key,
+          quantity: 0,
+          transactionType: "SELL",
+        });
+      }
+    } catch (err: any) {
+      console.warn("[Server] Risk enforcement check skipped for exit-all:", err.message);
+    }
     const success = await exitAllPositions();
     return { success };
   })
@@ -169,14 +181,13 @@ const app = new Elysia()
         const fm = await getFundManager();
         let targetAgent = fm;
 
-        // If chatting with a subagent, retrieve it from the Fund Manager's subagents list
+        // If chatting with a subagent, retrieve it from the agent registry
         if (role !== "fund_manager") {
-          // Fund Manager compiles subagents in an array, find the one with the matching name
-          const subagentObj = fm.subagents?.find((sa: any) => sa.name === role);
+          const subagentObj = agentRegistry[role];
           if (subagentObj) {
             targetAgent = subagentObj.runnable || subagentObj;
           } else {
-            console.warn(`[Server] Subagent ${role} not found in orchestrator. Invoking orchestrator directly.`);
+            console.warn(`[Server] Subagent ${role} not found in registry. Invoking orchestrator directly.`);
           }
         }
 

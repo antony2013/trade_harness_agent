@@ -30,6 +30,16 @@ export interface MarketQuote {
   last_trade_time: string;
 }
 
+export interface OptionsQuote extends MarketQuote {
+  oi: number;
+  iv: number;
+  delta?: number;
+  theta?: number;
+  strike_price: number;
+  expiry: string;
+  option_type: "CE" | "PE";
+}
+
 export interface NewsArticle {
   id: string;
   title: string;

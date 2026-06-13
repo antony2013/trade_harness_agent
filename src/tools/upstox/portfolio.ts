@@ -1,6 +1,9 @@
 import { getBaseUrl, getHeaders } from "./auth";
 import type { Position, AccountSummary } from "../../types/trade";
 import type { UpstoxResponse, UpstoxRawPosition } from "../../types/upstox";
+import { registerExperience } from "../rl/jit-updater";
+import { calculateReward } from "../rl/environment";
+import type { RLState } from "../rl/environment";
 
 /**
  * Fetches open and completed positions
@@ -41,8 +44,7 @@ export async function fetchPositions(): Promise<Position[]> {
       };
     });
   } catch (err: any) {
-    console.warn(`[Portfolio] fetchPositions failed (${err.message}). Returning empty active positions.`);
-    return [];
+    throw new Error(`[Portfolio] fetchPositions failed: ${err.message}`);
   }
 }
 
@@ -72,8 +74,7 @@ export async function fetchHoldings(): Promise<any[]> {
 
     return json.data;
   } catch (err: any) {
-    console.warn(`[Portfolio] fetchHoldings failed (${err.message}). Returning empty holdings.`);
-    return [];
+    throw new Error(`[Portfolio] fetchHoldings failed: ${err.message}`);
   }
 }
 
@@ -122,19 +123,8 @@ export async function fetchAccountSummary(): Promise<AccountSummary> {
       daily_drawdown_percent: drawdownPercent,
       timestamp: new Date().toISOString(),
     };
-  } catch (err) {
-    console.error("[Portfolio] fetchAccountSummary failed:", err);
-    // Return mock summary for development if token is uninitialized/errored
-    return {
-      balance: 100000,
-      margin_available: 100000,
-      margin_used: 0,
-      total_equity: 100000,
-      unrealized_pnl: 0,
-      realized_pnl: 0,
-      daily_drawdown_percent: 0,
-      timestamp: new Date().toISOString(),
-    };
+  } catch (err: any) {
+    throw new Error(`[Portfolio] fetchAccountSummary failed: ${err.message}`);
   }
 }
 
@@ -199,5 +189,41 @@ export async function triggerKillSwitch(disable: boolean): Promise<boolean> {
   } catch (err) {
     console.error(`[Portfolio] triggerKillSwitch failed for status ${body.status}:`, err);
     return false;
+  }
+}
+
+/**
+ * Checks for positions that were open in previous ticks but are now closed,
+ * and registers the corresponding trade experience with the RL feedback loop.
+ * @param previousPositions - The list of positions in the previous tick
+ * @param currentPositions - The list of positions in the current tick
+ */
+export function checkAndRegisterClosedTrades(
+  previousPositions: Position[],
+  currentPositions: Position[]
+): void {
+  for (const currentPos of currentPositions) {
+    if (currentPos.quantity === 0) {
+      const prevPos = previousPositions.find(p => p.instrument_key === currentPos.instrument_key);
+      if (prevPos && prevPos.quantity !== 0) {
+        console.log(`[Portfolio] Closed position detected for ${currentPos.trading_symbol}. Registering RL experience.`);
+        const realized_pnl = currentPos.realized_pnl;
+        const cost = prevPos.average_price * Math.abs(prevPos.quantity);
+        const pnlPercent = cost > 0 ? (realized_pnl / cost) * 100 : 0;
+        
+        const state: RLState = {
+          rsi: pnlPercent > 0 ? 65 : (pnlPercent < 0 ? 35 : 50),
+          emaRatio: prevPos.average_price > 0 ? (currentPos.current_price / prevPos.average_price) : 1.0,
+          vwapRatio: prevPos.average_price > 0 ? (currentPos.current_price / prevPos.average_price) : 1.0,
+          atrNormalized: 0.01,
+          positionStatus: 0,
+          positionAge: Math.max(1, Math.round((new Date().getTime() - new Date(prevPos.entry_time).getTime()) / (60 * 1000))),
+          consensusScore: pnlPercent > 0 ? 0.5 : (pnlPercent < 0 ? -0.5 : 0)
+        };
+
+        const reward = calculateReward(2, realized_pnl, pnlPercent, 0, true);
+        registerExperience(state, 2, reward, null, true);
+      }
+    }
   }
 }

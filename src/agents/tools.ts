@@ -8,6 +8,7 @@ import { computeRSI, computeEMA, computeATR, computeVWAP } from "../tools/analys
 import { detectBreakouts, detectCandlestickPatterns } from "../tools/analysis/patterns";
 import { policy } from "../tools/rl/jit-updater";
 import { stateToArray } from "../tools/rl/environment";
+import { enforceRiskRules } from "../tools/risk/enforcer";
 
 // 1. Upstox Market Data Tools
 export const getQuoteTool = tool(
@@ -58,8 +59,21 @@ export const getCandlesTool = tool(
 export const placeOrderTool = tool(
   async (params) => {
     try {
-      const order = await placeOrder({
+      const riskCheck = await enforceRiskRules({
+        instrumentKey: params.instrumentKey,
         quantity: params.quantity,
+        transactionType: params.transactionType as any,
+      });
+
+      if (!riskCheck.approved) {
+        return JSON.stringify({
+          error: "Risk rejection: " + riskCheck.reason,
+          approved: false,
+        });
+      }
+
+      const order = await placeOrder({
+        quantity: riskCheck.adjustedQuantity,
         product: params.product as any,
         validity: params.validity as any,
         price: params.price,
@@ -353,16 +367,7 @@ export const getFundamentalsTool = tool(
   async ({ instrumentKey }) => {
     const data = MOCK_FUNDAMENTALS[instrumentKey];
     if (!data) {
-      return JSON.stringify({
-        instrumentKey,
-        pe_ratio: 15.0 + Math.random() * 10,
-        pb_ratio: 2.0 + Math.random() * 2,
-        roe: 12.0 + Math.random() * 5,
-        debt_to_equity: Math.random(),
-        eps: 25.0 + Math.random() * 20,
-        market_cap_cr: 100000,
-        dividend_yield: 1.0,
-      }, null, 2);
+      return JSON.stringify({ error: "Fundamentals not available for instrument: " + instrumentKey });
     }
     return JSON.stringify(data, null, 2);
   },

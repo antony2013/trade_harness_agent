@@ -7,10 +7,10 @@ export const env = {
 
   // Ollama Model Configuration
   OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
-  OLLAMA_MODEL_REASONING: process.env.OLLAMA_MODEL_REASONING || "deepseek-r1:32b",
-  OLLAMA_MODEL_CODING: process.env.OLLAMA_MODEL_CODING || "qwen3-coder:30b",
-  OLLAMA_MODEL_ANALYSIS: process.env.OLLAMA_MODEL_ANALYSIS || "qwen3.5:27b",
-  OLLAMA_MODEL_LIGHTWEIGHT: process.env.OLLAMA_MODEL_LIGHTWEIGHT || "qwen3.5:9b",
+  OLLAMA_MODEL_REASONING: process.env.OLLAMA_MODEL_REASONING || "qwen2.5:7b-q4_K_M",
+  OLLAMA_MODEL_CODING:    process.env.OLLAMA_MODEL_CODING    || "qwen2.5-coder:7b-q4_K_M",
+  OLLAMA_MODEL_ANALYSIS:  process.env.OLLAMA_MODEL_ANALYSIS  || "qwen2.5:7b-q4_K_M",
+  OLLAMA_MODEL_LIGHTWEIGHT: process.env.OLLAMA_MODEL_LIGHTWEIGHT || "qwen2.5:3b",
 
   // Application Settings
   PORT: parseInt(process.env.PORT || "3000", 10),

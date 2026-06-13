@@ -8,6 +8,9 @@ export interface RiskConfig {
   atrMultiplierSL: number;            // e.g. 1.5 = Stop loss distance as a multiplier of Average True Range
   defaultStopLossPercent: number;     // e.g. 0.015 = 1.5% default stop loss if ATR is unavailable
   defaultTargetPercent: number;       // e.g. 0.03 = 3% default profit target
+  maxLotExposurePerStrike: number;    // e.g. 2 = Max lots exposure per options strike
+  maxTotalOptionsLots: number;        // e.g. 5 = Max total options lots across all strikes
+  minDTE: number;                     // e.g. 0 = Minimum days to expiry (same day allowed)
 }
 
 export const RISK_RULES: RiskConfig = {
@@ -20,6 +23,9 @@ export const RISK_RULES: RiskConfig = {
   atrMultiplierSL: 1.5,
   defaultStopLossPercent: 0.015,
   defaultTargetPercent: 0.03,
+  maxLotExposurePerStrike: 2,
+  maxTotalOptionsLots: 5,
+  minDTE: 0,
 };
 
 // Sector definitions for tracking exposure

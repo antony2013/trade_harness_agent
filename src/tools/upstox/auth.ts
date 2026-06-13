@@ -63,13 +63,39 @@ export function loadStoredToken(): string {
 export function saveToken(tokenData: any): void {
   ensureDataDirectory();
   try {
-    fs.writeFileSync(TOKEN_FILE_PATH, JSON.stringify(tokenData, null, 2), "utf-8");
+    const expiresIn = tokenData.expires_in || 86400; // default to 24 hours
+    const expiresAt = Date.now() + (expiresIn * 1000);
+    const dataToStore = {
+      ...tokenData,
+      expires_at: expiresAt,
+    };
+    fs.writeFileSync(TOKEN_FILE_PATH, JSON.stringify(dataToStore, null, 2), "utf-8");
     activeToken = tokenData.access_token;
     env.UPSTOX_ACCESS_TOKEN = tokenData.access_token;
     console.log("[Auth] Access token stored successfully.");
   } catch (err) {
     console.error("[Auth] Error writing token file:", err);
   }
+}
+
+/**
+ * Checks if the stored access token is expired or within the 5-minute buffer
+ * @returns true if expired or within buffer, false otherwise
+ */
+export function isTokenExpired(): boolean {
+  try {
+    if (fs.existsSync(TOKEN_FILE_PATH)) {
+      const raw = fs.readFileSync(TOKEN_FILE_PATH, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (parsed.expires_at) {
+        const bufferMs = 5 * 60 * 1000; // 5 minutes buffer
+        return Date.now() >= (parsed.expires_at - bufferMs);
+      }
+    }
+  } catch (err) {
+    console.error("[Auth] Error checking token expiry:", err);
+  }
+  return false;
 }
 
 /**
@@ -119,11 +145,19 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
  * Retrieves the currently active access token
  */
 export function getAccessToken(): string {
+  if (isTokenExpired()) {
+    console.error("[Auth] CRITICAL: Access token expired. Manual re-authentication required.");
+    return "";
+  }
   if (env.UPSTOX_ACCESS_TOKEN) {
     return env.UPSTOX_ACCESS_TOKEN;
   }
   if (!activeToken) {
     loadStoredToken();
+  }
+  if (isTokenExpired()) {
+    console.error("[Auth] CRITICAL: Access token expired. Manual re-authentication required.");
+    return "";
   }
   return activeToken;
 }

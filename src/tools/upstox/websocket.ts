@@ -2,6 +2,8 @@ import { EventEmitter } from "events";
 import { fetchMarketQuotes } from "./market-data";
 import type { Tick } from "../../types/market";
 
+const previousPrices = new Map<string, number>();
+
 export class UpstoxMarketFeed extends EventEmitter {
   private subscribedKeys: Set<string> = new Set();
   private pollIntervalId: any = null;
@@ -78,16 +80,21 @@ export class UpstoxMarketFeed extends EventEmitter {
       const quotes = await fetchMarketQuotes(keys);
 
       for (const [key, quote] of Object.entries(quotes)) {
+        const last_price = quote.last_price;
+        const previousPrice = previousPrices.get(key) ?? last_price;
+
         const tick: Tick = {
           instrument_key: key,
-          price: quote.last_price,
+          price: last_price,
           volume: quote.volume,
           timestamp: quote.last_trade_time || new Date().toISOString(),
-          open: quote.last_price,  // Simple fallback structure
-          high: quote.last_price,
-          low: quote.last_price,
-          close: quote.last_price,
+          open: previousPrice,
+          high: Math.max(previousPrice, last_price),
+          low: Math.min(previousPrice, last_price),
+          close: last_price,
         };
+
+        previousPrices.set(key, last_price);
         
         this.emit("tick", tick);
       }

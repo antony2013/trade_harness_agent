@@ -4,12 +4,27 @@ import { initRL } from "./tools/rl/jit-updater";
 import { marketFeed } from "./tools/upstox/websocket";
 import { fetchMarketQuotes } from "./tools/upstox/market-data";
 import { createFundManager } from "./agents/agent-system";
+import { isMarketOpen } from "./utils/market-hours";
+import { fetchPositions, checkAndRegisterClosedTrades } from "./tools/upstox/portfolio";
+import type { Position } from "./types/trade";
 
 // Import server to start ElysiaJS on startup
 import "./server/index";
 
 async function runIntegratedPipeline() {
+  if (!isMarketOpen()) {
+    console.log("[Pipeline] Market closed. Skipping pipeline run.");
+    return;
+  }
+
   console.log("\n[Pipeline] Starting periodic multi-agent trading evaluation...");
+  
+  let prevPositions: Position[] = [];
+  try {
+    prevPositions = await fetchPositions();
+  } catch (err: any) {
+    console.error("[Pipeline] Failed to fetch previous positions for RL feedback:", err.message);
+  }
   
   try {
     const keys = WATCHLIST.slice(0, 2).map((w) => w.instrument_key); // Limit to first two for testing speed
@@ -40,6 +55,13 @@ async function runIntegratedPipeline() {
     }
   } catch (err: any) {
     console.error("[Pipeline] Integrated pipeline encountered error:", err.message);
+  }
+
+  try {
+    const currentPositions = await fetchPositions();
+    checkAndRegisterClosedTrades(prevPositions, currentPositions);
+  } catch (err: any) {
+    console.error("[Pipeline] RL feedback loop checkAndRegisterClosedTrades failed:", err.message);
   }
 }
 

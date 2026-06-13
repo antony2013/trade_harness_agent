@@ -147,7 +147,8 @@ Protect the firm's capital by arguing why this trade could lose money.`,
   });
 }
 
-// 11. Fund Manager (Orchestrator)
+export const agentRegistry: Record<string, any> = {};
+
 export async function createFundManager() {
   // Instance child agents
   const dataCollector = await createDataCollector();
@@ -161,6 +162,19 @@ export async function createFundManager() {
   const codingAgent = await createCodingAgent();
   const bullAgent = await createBullAgent();
   const bearAgent = await createBearAgent();
+
+  // Populate registry
+  agentRegistry["data_collector"] = dataCollector;
+  agentRegistry["technical_analyst"] = techAnalyst;
+  agentRegistry["fundamental_analyst"] = fundAnalyst;
+  agentRegistry["sentiment_analyst"] = sentAnalyst;
+  agentRegistry["strategy_builder"] = strategyBuilder;
+  agentRegistry["rl_evaluator"] = rlEvaluator;
+  agentRegistry["risk_manager"] = riskManager;
+  agentRegistry["execution_engine"] = executionEngine;
+  agentRegistry["coding_agent"] = codingAgent;
+  agentRegistry["bull_agent"] = bullAgent;
+  agentRegistry["bear_agent"] = bearAgent;
 
   // Return the main Fund Manager Orchestrator agent loaded with subagents
   return await createDeepAgent({

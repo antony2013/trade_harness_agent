@@ -19,9 +19,7 @@ function ensureDataDirectory() {
  * Returns the base URL based on the trading mode
  */
 export function getBaseUrl(): string {
-  return env.TRADING_MODE === "live"
-    ? "https://api.upstox.com/v2"
-    : "https://api-sandbox.upstox.com/v2";
+  return "https://api.upstox.com/v2";
 }
 
 /**

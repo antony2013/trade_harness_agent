@@ -9,6 +9,27 @@ import { env } from "../../config/env";
  * Endpoint: POST /order/place
  */
 export async function placeOrder(params: UpstoxOrderParams): Promise<Order> {
+  if (env.TRADING_MODE === "sandbox") {
+    const inst = getInstrument(params.instrument_token);
+    const mockOrderId = "MOCK-" + Math.floor(Math.random() * 1000000000);
+    const newOrder: Order = {
+      order_id: mockOrderId,
+      instrument_key: params.instrument_token,
+      trading_symbol: inst?.trading_symbol || "UNKNOWN",
+      transaction_type: params.transaction_type,
+      order_type: params.order_type,
+      quantity: params.quantity,
+      price: params.price || 100.0,
+      trigger_price: params.trigger_price,
+      status: "COMPLETE",
+      filled_quantity: params.quantity,
+      average_price: params.price || 100.0,
+      timestamp: new Date().toISOString(),
+    };
+    console.log(`[Orders] [Mock/Paper] Placed and filled order successfully (Bypassed API). Order ID: ${newOrder.order_id}`);
+    return newOrder;
+  }
+
   const baseUrl = getBaseUrl();
   const url = `${baseUrl}/order/place`;
 

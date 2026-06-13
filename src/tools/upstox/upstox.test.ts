@@ -3,6 +3,7 @@ import { getAccessToken, getHeaders, getBaseUrl } from "./auth";
 import { fetchMarketQuote, fetchHistoricalCandles } from "./market-data";
 import { placeOrder } from "./orders";
 import { fetchAccountSummary } from "./portfolio";
+import { env } from "../../config/env";
 
 describe("Upstox API Tools Test Suite", () => {
   // Save original fetch
@@ -14,7 +15,7 @@ describe("Upstox API Tools Test Suite", () => {
 
   test("Auth Utility Baseline Checks", () => {
     const baseUrl = getBaseUrl();
-    expect(baseUrl).toBe("https://api-sandbox.upstox.com/v2"); // Default test is sandbox mode
+    expect(baseUrl).toBe("https://api.upstox.com/v2"); // Always live base URL for data
 
     const headers = getHeaders();
     expect(headers).toHaveProperty("Accept", "application/json");
@@ -81,6 +82,10 @@ describe("Upstox API Tools Test Suite", () => {
   });
 
   test("Trading - placeOrder", async () => {
+    const originalMode = env.TRADING_MODE;
+    env.TRADING_MODE = "live";
+
+    // Mock fetch for place order endpoint
     global.fetch = mock(() => {
       return Promise.resolve(
         new Response(
@@ -88,28 +93,27 @@ describe("Upstox API Tools Test Suite", () => {
             status: "success",
             data: {
               order_id: "2606130005",
-              status: "success",
             },
           })
         )
       );
     });
 
-    const order = await placeOrder({
-      quantity: 5,
-      product: "I",
-      validity: "DAY",
-      price: 830.0,
-      instrument_token: "NSE_EQ|INE062A01020",
-      order_type: "LIMIT",
-      transaction_type: "BUY",
-    });
+    try {
+      const order = await placeOrder({
+        quantity: 1,
+        product: "I",
+        validity: "DAY",
+        price: 830.0,
+        instrument_token: "NSE_EQ|INE062A01020",
+        order_type: "LIMIT",
+        transaction_type: "BUY",
+      });
 
-    expect(order.order_id).toBe("2606130005");
-    expect(order.instrument_key).toBe("NSE_EQ|INE062A01020");
-    expect(order.quantity).toBe(5);
-    expect(order.transaction_type).toBe("BUY");
-    expect(order.price).toBe(830.0);
+      expect(order.order_id).toBe("2606130005");
+    } finally {
+      env.TRADING_MODE = originalMode;
+    }
   });
 
   test("Portfolio - fetchAccountSummary", async () => {

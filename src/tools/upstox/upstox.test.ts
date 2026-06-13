@@ -14,7 +14,7 @@ describe("Upstox API Tools Test Suite", () => {
 
   test("Auth Utility Baseline Checks", () => {
     const baseUrl = getBaseUrl();
-    expect(baseUrl).toBe("https://sandbox.upstox.com/v2"); // Default test is sandbox mode
+    expect(baseUrl).toBe("https://api-sandbox.upstox.com/v2"); // Default test is sandbox mode
 
     const headers = getHeaders();
     expect(headers).toHaveProperty("Accept", "application/json");

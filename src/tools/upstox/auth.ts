@@ -21,7 +21,7 @@ function ensureDataDirectory() {
 export function getBaseUrl(): string {
   return env.TRADING_MODE === "live"
     ? "https://api.upstox.com/v2"
-    : "https://sandbox.upstox.com/v2";
+    : "https://api-sandbox.upstox.com/v2";
 }
 
 /**

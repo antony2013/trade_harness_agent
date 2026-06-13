@@ -1,0 +1,27 @@
+{
+  "name": "harness-trading-system",
+  "version": "1.0.0",
+  "description": "Multi-agent algorithmic trading company platform",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.2.0",
+    "@elysiajs/swagger": "^1.2.0",
+    "@langchain/core": "^1.1.44",
+    "@langchain/ollama": "^0.2.0",
+    "@sinclair/typebox": "^0.34.0",
+    "deepagents": "^1.10.2",
+    "elysia": "^1.2.0",
+    "langchain": "^1.4.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}

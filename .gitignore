@@ -1,0 +1,30 @@
+# Node.js dependencies
+node_modules/
+frontend/node_modules/
+
+# Environment configurations (credentials)
+.env
+
+# Local database, RL weights, replay buffers, and logs
+data/
+
+# Build and runtime outputs
+dist/
+.svelte-kit/
+frontend/.svelte-kit/
+frontend/build/
+
+# IDE / Editor configurations
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS temporary files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store

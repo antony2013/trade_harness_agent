@@ -183,7 +183,20 @@ const app = new Elysia()
         // --- PRE-FETCH CONTEXT INJECTION (resilience for small local LLMs like Granite 3B) ---
         let contextText = "";
         const symbolsInMessage = ["SBIN", "RELIANCE", "BHARTIALRT", "HDFCBANK", "INFY", "TCS", "WIPRO", "ITC"];
-        const matchedSymbols = symbolsInMessage.filter(s => userMessageText.toUpperCase().includes(s));
+        let matchedSymbols = symbolsInMessage.filter(s => userMessageText.toUpperCase().includes(s));
+        
+        if (
+          matchedSymbols.length === 0 &&
+          (userMessageText.toLowerCase().includes("news") ||
+           userMessageText.toLowerCase().includes("headline") ||
+           userMessageText.toLowerCase().includes("செய்தி") ||
+           userMessageText.toLowerCase().includes("quote") ||
+           userMessageText.toLowerCase().includes("price") ||
+           role === "sentiment_analyst" ||
+           role === "technical_analyst")
+        ) {
+          matchedSymbols = ["SBIN", "RELIANCE", "HDFCBANK", "TCS"];
+        }
         
         if (matchedSymbols.length > 0) {
           const symbolToKey: Record<string, string> = {

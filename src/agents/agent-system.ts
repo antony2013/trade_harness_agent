@@ -21,7 +21,7 @@ export async function createTechnicalAnalyst() {
     systemPrompt: `You are the Technical Analyst for Harness Trading Company.
 Your job is to calculate price indicators (RSI, MACD, EMA, Bollinger Bands, ATR) and identify chart breakouts or candlestick patterns.
 You score indicators from -1 (extremely bearish) to +1 (extremely bullish) and output technical signals with confidence scores (0-100%).
-Always use your calculate_technical_indicators and detect_chart_patterns tools to gather technical patterns and metrics before outputting a recommendation.`,
+Always use the pre-fetched market quotes, candles, and indicators injected in the user prompt context to answer technical questions directly. Do not apologize or claim you lack access to price charts or quotes.`,
     tools: [tools.calculateIndicatorsTool, tools.detectPatternsTool],
   });
 }
@@ -45,7 +45,7 @@ export async function createSentimentAnalyst() {
     systemPrompt: `You are the Sentiment Analyst for Harness Trading Company.
 Your job is to parse financial headlines, news releases, earnings conference notes, and market gossip.
 Classify sentiment as BULLISH (+1), BEARISH (-1), or NEUTRAL (0) with confidence levels.
-Always fetch the latest news articles for stock symbols using your get_market_news tool before making a sentiment analysis report.`,
+Always use the pre-fetched news headlines and articles injected in the user prompt context to formulate your sentiment reports. Do not apologize or claim you lack access to news or market feeds.`,
     tools: [tools.getNewsTool],
   });
 }
@@ -179,7 +179,7 @@ Your trade approval process:
 7. If approved, pass the signal to the Risk Manager for exposure checks and quantity sizing.
 8. If the Risk Manager approves, pass it to the Execution Engine to buy or sell.
 
-Always coordinate with your subagents. Do not perform analysis or order execution yourself — delegate!`,
+Always use the pre-fetched quotes and news context injected directly in the user prompt to answer queries about prices or headlines. Do not claim you lack access to live news or real-time market data.`,
     subagents: [
       {
         name: "data_collector",

@@ -3,7 +3,7 @@ import { cors } from "@elysiajs/cors";
 import { env } from "../config/env";
 import { WATCHLIST } from "../config/instruments";
 import { exchangeCodeForToken, getAuthUrl, hasValidToken, clearToken } from "../tools/upstox/auth";
-import { fetchMarketQuotes } from "../tools/upstox/market-data";
+import { fetchMarketQuotes, fetchNews } from "../tools/upstox/market-data";
 import { fetchPositions, fetchAccountSummary, exitAllPositions } from "../tools/upstox/portfolio";
 import { fetchOrderBook } from "../tools/upstox/orders";
 import { createFundManager } from "../agents/agent-system";
@@ -180,11 +180,63 @@ const app = new Elysia()
           }
         }
 
+        // --- PRE-FETCH CONTEXT INJECTION (resilience for small local LLMs like Granite 3B) ---
+        let contextText = "";
+        const symbolsInMessage = ["SBIN", "RELIANCE", "BHARTIALRT", "HDFCBANK", "INFY", "TCS", "WIPRO", "ITC"];
+        const matchedSymbols = symbolsInMessage.filter(s => userMessageText.toUpperCase().includes(s));
+        
+        if (matchedSymbols.length > 0) {
+          const symbolToKey: Record<string, string> = {
+            SBIN: "NSE_EQ|INE062A01020",
+            RELIANCE: "NSE_EQ|INE002A01018",
+            BHARTIALRT: "NSE_EQ|INE397D01024",
+            HDFCBANK: "NSE_EQ|INE040A01034",
+            INFY: "NSE_EQ|INE009A01021",
+            TCS: "NSE_EQ|INE467B01029",
+            WIPRO: "NSE_EQ|INE075A01022",
+            ITC: "NSE_EQ|INE154A01025",
+          };
+          
+          const keys = matchedSymbols.map(s => symbolToKey[s]);
+          
+          try {
+            const quotes = await fetchMarketQuotes(keys);
+            contextText += `\n[Live Market Quotes Context]:\n`;
+            for (const [key, q] of Object.entries(quotes)) {
+              const sym = matchedSymbols.find(s => symbolToKey[s] === key);
+              contextText += `- ${sym}: Current Price ₹${q.last_price}, Volume ${q.volume}, Change ₹${q.net_change}\n`;
+            }
+            
+            if (
+              userMessageText.toLowerCase().includes("news") || 
+              userMessageText.toLowerCase().includes("headline") || 
+              userMessageText.toLowerCase().includes("செய்தி") ||
+              role === "sentiment_analyst"
+            ) {
+              const newsItems = await fetchNews(keys);
+              contextText += `\n[Recent News Articles Context]:\n`;
+              newsItems.slice(0, 3).forEach((item) => {
+                contextText += `- Headline: "${item.headline}"\n  Summary: ${item.summary}\n  Time: ${item.published_at}\n`;
+              });
+            }
+          } catch (e: any) {
+            console.error("[Context Injection] Error pre-fetching context:", e.message);
+          }
+        }
+
         // Invoke agent with the conversation history formatted as LangChain messages
-        const formattedMessages = history.map((m) => ({
-          role: m.sender === "user" ? "user" : "assistant",
-          content: m.content,
-        }));
+        const formattedMessages = history.map((m, idx) => {
+          if (idx === history.length - 1 && contextText) {
+            return {
+              role: "user",
+              content: `${m.content}\n\n[CONTEXT FOR YOUR RESPONSE (use this data directly to answer the user's query)]:${contextText}`,
+            };
+          }
+          return {
+            role: m.sender === "user" ? "user" : "assistant",
+            content: m.content,
+          };
+        });
 
         const result = await targetAgent.invoke({
           messages: formattedMessages,
